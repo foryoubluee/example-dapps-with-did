@@ -1,4 +1,4 @@
-import Upbond from "@upbond/upbond-embed";
+import Upbond, { UPBOND_BUILD_ENV } from "@upbond/upbond-embed";
 import Web3 from "web3";
 import Web3Token from "web3-token";
 import { ethers } from "ethers";
@@ -20,7 +20,14 @@ class UpbondEmbed {
   networks = network;
 
   constructor() {
-    this.upbond = new Upbond({});
+    this.upbond = new Upbond({
+      consentConfiguration: {
+        clientId: `${process.env.NEXT_PUBLIC_DID_CLIENT_ID}`,
+        secretKey: `${process.env.NEXT_PUBLIC_DID_SECRET_KEY}`,
+        scope: ['email', 'name', 'birthday']
+      },
+      enableConsent: true,
+    });
     this.web3 = new Web3();
     this.provider = null;
   }
@@ -28,13 +35,11 @@ class UpbondEmbed {
   async init() {
     if (this.upbond instanceof Upbond) {
       await this.upbond.init({
-        consentConfiguration: {
-          clientId: `${process.env.NEXT_PUBLIC_DID_CLIENT_ID}`,
-          secretKey: `${process.env.NEXT_PUBLIC_DID_SECRET_KEY}`,
-          scope: ['your_scope_in_array']
+        widgetConfig: {
+          showAfterLoggedIn: true,
+          showBeforeLoggedIn: true
         },
-        enableConsent: true,
-        buildEnv: 'local',
+        buildEnv: UPBOND_BUILD_ENV.DEVELOPMENT,
         network: this.networks,
         isUsingDirect: true,
         skipDialog: false,

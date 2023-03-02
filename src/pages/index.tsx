@@ -22,7 +22,7 @@ export default function Home() {
 
   const getEmbedDid = async () => {
     const didJwt = await upbond.consent?.getDid();
-    console.log(jwtDid); // returns your verifierable credentials & presentation
+    console.log("@jwtDid", didJwt); // returns your verifierable credentials & presentation
     setJwtDid(didJwt);
   };
 
@@ -30,7 +30,6 @@ export default function Home() {
     setLoading(true);
     localStorage.setItem("isLoggedIn", "true");
     try {
-      console.log(upbondServices.provider);
       const login = await upbondServices.login();
       if (login?.data !== null) {
         setAccount(login?.accounts);
@@ -69,8 +68,6 @@ export default function Home() {
     }
   }, []);
 
-  getEmbedDid();
-
   return (
     <>
       <Head>
@@ -97,6 +94,14 @@ export default function Home() {
                     </ul>
                   </div>
                 </div>
+                <button
+                  onClick={async () => {
+                    await getEmbedDid();
+                  }}
+                  className="rounded-md mt-6 hover:bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-gray-50 shadow-sm bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Get Jwt DID
+                </button>
                 <button
                   onClick={async () => {
                     upbondServices.logout();
