@@ -12,11 +12,9 @@ const useLoading = () => {
     color: string;
   }): any => {
     return (
-      loading === true && (
-        <div className="w-max flex flex-col items-center justify-center">
-          <CircularProgress size={size} style={{ color }} />
-        </div>
-      )
+      <div className="w-min flex flex-col items-center justify-center">
+        <CircularProgress size={size} style={{ color }} />
+      </div>
     );
   };
 

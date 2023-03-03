@@ -21,6 +21,7 @@ class UpbondEmbed {
 
   constructor() {
     this.upbond = new Upbond({
+      buttonPosition: 'bottom-left',
       consentConfiguration: {
         clientId: `${process.env.NEXT_PUBLIC_DID_CLIENT_ID}`,
         secretKey: `${process.env.NEXT_PUBLIC_DID_SECRET_KEY}`,
@@ -37,9 +38,9 @@ class UpbondEmbed {
       await this.upbond.init({
         widgetConfig: {
           showAfterLoggedIn: true,
-          showBeforeLoggedIn: true
+          showBeforeLoggedIn: false
         },
-        buildEnv: UPBOND_BUILD_ENV.DEVELOPMENT,
+        buildEnv: UPBOND_BUILD_ENV.LOCAL,
         network: this.networks,
         isUsingDirect: true,
         skipDialog: false,

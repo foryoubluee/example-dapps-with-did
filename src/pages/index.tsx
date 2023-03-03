@@ -1,61 +1,108 @@
 import useLoading from "@/hooks/useLoading";
 import Head from "next/head";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import upbondServices from "@/libs/upbondEmbed";
-import { toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
+import { useRouter } from "next/router";
+import { ethers } from "ethers";
 
 export default function Home() {
   const upbond = upbondServices.upbond;
   const { isLoading, LoaderDisplay, setLoading } = useLoading();
+  const { push: navigate } = useRouter();
 
-  const [userData, setUserData] = useState({});
+  const [jwtDid, setJwtDid] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [account, setAccount] = useState<undefined | string[]>(undefined);
-  const [jwtDid, setJwtDid] = useState<
-    | {
-        jwt: string;
-        jwtPresentation: string;
-      }
-    | undefined
-  >(undefined);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [userDidData, setUserDidData] = useState<string | undefined>();
+  const [ethersWeb3Provider, setEthersWeb3Provider] =
+    useState<ethers.providers.Web3Provider | null>(null);
 
-  const getEmbedDid = async () => {
-    const didJwt = await upbond.consent?.getDid();
-    console.log("@jwtDid", didJwt); // returns your verifierable credentials & presentation
-    setJwtDid(didJwt);
+  const getJwtDid = async () => {
+    console.log("torus url", upbond.torusUrl);
+    console.log(`init? ${isInitialized}`);
+    setLoading(true);
+    try {
+      console.log(`@ start get jwt did from ${upbond.torusUrl}/`);
+      const did = await upbond.consent?.getDid();
+      if (did === undefined) {
+        toast(
+          <DidErrorToast
+            msg={`You don't have did, please create on`}
+            href={`${upbond.torusUrl}/`}
+          />,
+          { autoClose: false }
+        );
+        // console.log("@masuk jwt did error", jwtDid ?? did);
+      } else if (did !== undefined) {
+        setJwtDid(did);
+      } else {
+        toast(
+          <DidErrorToast
+            msg={`You don't have did, please create on`}
+            href={`${upbond.torusUrl}/`}
+          />,
+          { autoClose: false }
+        );
+      }
+      console.log("@ complete get jwt did");
+    } catch (error: any) {
+      const errorMsg = error.message.replace("User", "You");
+      toast(
+        <DidErrorToast
+          msg={errorMsg + "create here on"}
+          href={`${upbond.torusUrl}/`}
+        />,
+        {
+          autoClose: false,
+        }
+      );
+    }
+    setLoading(false);
   };
 
-  const login = async () => {
-    setLoading(true);
-    localStorage.setItem("isLoggedIn", "true");
+  const getUserDidData = async (didJwt: any) => {
     try {
-      const login = await upbondServices.login();
-      if (login?.data !== null) {
-        setAccount(login?.accounts);
-        setLoading(false);
-        localStorage.removeItem("isLoggedIn");
-        return;
+      console.log("@ start getUserDid");
+
+      if (jwtDid) {
+        const data = await upbond.consent?.requestUserData(jwtDid);
+        setUserDidData(data);
+        console.log(data, "@user did data");
       }
-      setIsLoggedIn(true);
-      setLoading(false);
+
+      console.log("@ end");
     } catch (error: any) {
-      localStorage.removeItem("isLoggedIn");
-      toast.error(error.message || "Some error occured");
-      setLoading(false);
-      console.error(error);
-      throw new Error(error);
+      toast(<DidErrorToast msg={error.message} />);
+      return;
     }
   };
 
   useEffect(() => {
-    const init = async () => {
-      await upbondServices.init();
+    const initUpbond = async () => {
+      setLoading(true);
+      try {
+        await upbondServices.init();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error(`Error initialization: `, error);
+      }
+      setLoading(false);
     };
-    if (!upbond.isInitialized) {
-      init();
+    if (upbondServices.initialized) {
+      return;
     }
+    initUpbond();
   }, []);
+
+  useEffect(() => {
+    if (isInitialized && !jwtDid) {
+      (async () => await getJwtDid())();
+    }
+    if (jwtDid) {
+      (async () => await getUserDidData(jwtDid))();
+    }
+  }, [isInitialized, jwtDid]);
 
   useEffect(() => {
     if (
@@ -65,10 +112,11 @@ export default function Home() {
       setIsLoggedIn(true);
     } else {
       setIsLoggedIn(false);
+      setTimeout(() => navigate("/login"), 1000);
     }
   }, []);
 
-  return (
+  return isLoggedIn ? (
     <>
       <Head>
         <title>Example DApps with DID</title>
@@ -76,9 +124,22 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="bg-[#101827] h-screen text-gray-300">
-        {isLoggedIn ? (
-          <div className="mx-auto max-w-7xl py-24 px-4 sm:px-6 sm:py-32 lg:px-8">
+      <main className="bg-[rgb(16,24,39)] h-screen text-gray-300">
+        <ToastContainer
+          style={{ width: "100%", maxWidth: "500px" }}
+          position="top-center"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+        <div className="mx-auto max-w-7xl py-24 px-4 sm:px-6 sm:py-32 lg:px-8">
+          {!isLoading ? (
             <div className="relative overflow-hidden bg-gray-900 shadow-xl py-14 px-12 rounded-2xl">
               <h1 className="max-w-2xl text-2xl font-bold tracking-tight">
                 Welcome to Example DID DApps
@@ -96,15 +157,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={async () => {
-                    await getEmbedDid();
-                  }}
-                  className="rounded-md mt-6 hover:bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-gray-50 shadow-sm bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  Get Jwt DID
-                </button>
-                <button
-                  onClick={async () => {
-                    upbondServices.logout();
+                    await upbondServices.logout();
                     localStorage.removeItem("isLoggedIn");
                     setIsLoggedIn(false);
                   }}
@@ -112,79 +165,14 @@ export default function Home() {
                 >
                   Logout
                 </button>
-                <svg
-                  viewBox="0 0 1024 1024"
-                  className="absolute top-1/2 left-1/2 -z-10 h-[64rem] w-[64rem] -translate-x-1/2 [mask-image:radial-gradient(closest-side,white,transparent)]"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx={512}
-                    cy={512}
-                    r={512}
-                    fill="url(#827591b1-ce8c-4110-b064-7cb85a0b1217)"
-                    fillOpacity="0.7"
-                  />
-                  <defs>
-                    <radialGradient id="827591b1-ce8c-4110-b064-7cb85a0b1217">
-                      <stop stopColor="#7775D6" />
-                      <stop offset={1} stopColor="#E935C1" />
-                    </radialGradient>
-                  </defs>
-                </svg>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="mx-auto max-w-7xl py-24 sm:px-6 sm:py-32 lg:px-8">
-            <div className="relative isolate overflow-hidden bg-gray-900 px-6 py-24 text-center shadow-2xl sm:rounded-3xl sm:px-16">
-              <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                DApps with Decentralized Identifiers
-              </h2>
-              <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-300">
-                Login to test the DIDI consent management, anjir didi siapa cuk
-                wkwk by the way lets go!
-              </p>
-              <div className="mt-10 flex items-center justify-center gap-x-6">
-                <button
-                  onClick={async () => login()}
-                  className="rounded-md hover:bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-gray-50 shadow-sm bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  {isLoading ? (
-                    <LoaderDisplay size={17} color="#fff" />
-                  ) : (
-                    "Get started"
-                  )}
-                </button>
-                <a
-                  target="_blank"
-                  href="https://upbond.io"
-                  className="text-sm font-semibold leading-6 text-white"
-                >
-                  Learn more <span aria-hidden="true">→</span>
-                </a>
-              </div>
-              <svg
-                viewBox="0 0 1024 1024"
-                className="absolute top-1/2 left-1/2 -z-10 h-[64rem] w-[64rem] -translate-x-1/2 [mask-image:radial-gradient(closest-side,white,transparent)]"
-                aria-hidden="true"
-              >
-                <circle
-                  cx={512}
-                  cy={512}
-                  r={512}
-                  fill="url(#827591b1-ce8c-4110-b064-7cb85a0b1217)"
-                  fillOpacity="0.7"
-                />
-                <defs>
-                  <radialGradient id="827591b1-ce8c-4110-b064-7cb85a0b1217">
-                    <stop stopColor="#7775D6" />
-                    <stop offset={1} stopColor="#E935C1" />
-                  </radialGradient>
-                </defs>
-              </svg>
+          ) : (
+            <div className="w-screen h-screen grid place-content-center">
+              <LoaderDisplay size={70} color="#fff" />
             </div>
-          </div>
-        )}
+          )}
+        </div>
         <div className="w-full flex justify-center">
           <img
             src={"https://i.ibb.co/JkkMJ1d/1574.png"}
@@ -195,5 +183,20 @@ export default function Home() {
         </div>
       </main>
     </>
+  ) : (
+    <div className="w-screen h-screen grid place-content-center">
+      <LoaderDisplay size={70} color="#fff" />
+    </div>
   );
 }
+
+const DidErrorToast = ({ msg, href }: { msg: string; href?: string }) => {
+  return (
+    <div>
+      {msg}{" "}
+      <a href={href} target="_blank" className="underline">
+        {href}
+      </a>
+    </div>
+  );
+};
