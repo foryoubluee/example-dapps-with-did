@@ -40,7 +40,7 @@ class UpbondEmbed {
           showAfterLoggedIn: true,
           showBeforeLoggedIn: false
         },
-        buildEnv: `${process.env.NEXT_APP_EMBED_BUILD_ENV}`,
+        buildEnv: `v2_development`,
         network: this.networks,
         isUsingDirect: true,
         skipDialog: false,
