@@ -2,7 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   env: {
-    NODE_ENV: "development",
     NEXT_APP_EMBED_BUILD_ENV: "local",
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: "hxFv4SaQVXv3tE_rhe5u9",
     NEXT_PUBLIC_LINE_CLIENT_ID: "FoQ_Ri8rKSXkHf82GRzZK",
