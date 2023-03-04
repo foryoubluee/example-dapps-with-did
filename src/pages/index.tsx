@@ -8,9 +8,10 @@ import { ethers } from "ethers";
 
 export default function Home() {
   const upbond = upbondServices.upbond;
-  const { isLoading, LoaderDisplay, setLoading } = useLoading();
+  const { LoaderDisplay } = useLoading();
   const { push: navigate } = useRouter();
 
+  const [isLoading, setLoading] = useState(false);
   const [jwtDid, setJwtDid] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
@@ -21,10 +22,12 @@ export default function Home() {
   const getJwtDid = async () => {
     console.log("torus url", upbond.torusUrl);
     console.log(`init? ${isInitialized}`);
-    setLoading(true);
+
     try {
       console.log(`@ start get jwt did from ${upbond.torusUrl}/`);
+      setLoading(true);
       const did = await upbond.consent?.getDid();
+
       if (did === undefined) {
         toast(
           <DidErrorToast
@@ -33,61 +36,55 @@ export default function Home() {
           />,
           { autoClose: false }
         );
-        // console.log("@masuk jwt did error", jwtDid ?? did);
       } else if (did !== undefined) {
         setJwtDid(did);
-      } else {
-        toast(
-          <DidErrorToast
-            msg={`You don't have did, please create on`}
-            href={`${upbond.torusUrl}/`}
-          />,
-          { autoClose: false }
-        );
       }
+
+      if (did ?? jwtDid) {
+        setLoading(true);
+        await getUserDidData(did ?? jwtDid);
+      } else {
+        navigate("/login");
+      }
+
       console.log("@ complete get jwt did");
     } catch (error: any) {
-      const errorMsg = error.message.replace("User", "You");
-      toast(
-        <DidErrorToast
-          msg={errorMsg + "create here on"}
-          href={`${upbond.torusUrl}/`}
-        />,
-        {
-          autoClose: false,
-        }
-      );
+      toast(<DidErrorToast msg={error.message} />, {
+        autoClose: false,
+      });
+
+      setIsLoggedIn(false);
+
+      if (error.message === "User not loggedin") {
+        setIsLoggedIn(false);
+        localStorage.removeItem("isLoggedIn");
+      }
     }
-    setLoading(false);
   };
 
   const getUserDidData = async (didJwt: any) => {
     try {
+      setLoading(true);
       console.log("@ start getUserDid");
-
-      if (jwtDid) {
-        const data = await upbond.consent?.requestUserData(jwtDid);
-        setUserDidData(data);
-        console.log(data, "@user did data");
-      }
-
-      console.log("@ end");
-    } catch (error: any) {
-      toast(<DidErrorToast msg={error.message} />);
-      return;
+      const data = await upbond.consent?.requestUserData(didJwt);
+      console.log(data, "@user did data");
+    } catch (error) {
+      setIsLoggedIn(false);
+      localStorage.removeItem("isLoggedIn");
+      setLoading(false);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
     const initUpbond = async () => {
-      setLoading(true);
       try {
+        setLoading(true);
         await upbondServices.init();
         setIsInitialized(true);
       } catch (error) {
         console.error(`Error initialization: `, error);
       }
-      setLoading(false);
     };
     if (upbondServices.initialized) {
       return;
@@ -98,9 +95,6 @@ export default function Home() {
   useEffect(() => {
     if (isInitialized && !jwtDid) {
       (async () => await getJwtDid())();
-    }
-    if (jwtDid) {
-      (async () => await getUserDidData(jwtDid))();
     }
   }, [isInitialized, jwtDid]);
 
@@ -116,7 +110,15 @@ export default function Home() {
     }
   }, []);
 
-  return isLoggedIn ? (
+  useEffect(() => {
+    if (isLoggedIn && jwtDid && userDidData) {
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+  }, [isLoggedIn, jwtDid, userDidData]);
+
+  return isLoggedIn && !isLoading ? (
     <>
       <Head>
         <title>Example DApps with DID</title>
