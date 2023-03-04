@@ -40,7 +40,7 @@ class UpbondEmbed {
           showAfterLoggedIn: true,
           showBeforeLoggedIn: false
         },
-        buildEnv: UPBOND_BUILD_ENV.LOCAL,
+        buildEnv: UPBOND_BUILD_ENV.DEVELOPMENT,
         network: this.networks,
         isUsingDirect: true,
         skipDialog: false,
