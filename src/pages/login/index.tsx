@@ -129,8 +129,8 @@ export default function LoginPage() {
           <img
             src={"https://i.ibb.co/JkkMJ1d/1574.png"}
             alt="upbondlogo"
-            width={100}
-            height={100}
+            width={70}
+            height={70}
           />
         </div>
       </main>
